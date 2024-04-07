@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Cockpit</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> <!-- Adicionando Font Awesome -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            padding-top: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .stats-panel {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .badge {
+            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .badge-primary {
+            background-color: #007bff;
+        }
+        .badge-success {
+            background-color: #28a745;
+        }
+        .badge-danger {
+            background-color: #dc3545;
+        }
+        .badge-info {
+            background-color: #17a2b8;
+        }
+        .resource-table {
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Resource Cockpit</h1>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Resource List</h5>
+                <!-- Stats Panel -->
+                <div class="stats-panel">
+                    <span class="badge badge-primary" id="resourceCountBadge">0</span> Resources Listed
+                    <span class="badge badge-success" id="ec2CountBadge">0</span> EC2
+                    <span class="badge badge-info" id="eksCountBadge">0</span> EKS
+                    <span class="badge badge-danger" id="rdsCountBadge">0</span> RDS
+                </div>
+                <!-- Export Button -->
+                <button class="btn btn-primary mb-2" id="exportCsvBtn">Export to CSV</button>
+                <!-- Resource Table -->
+                <div class="form-group">
+                    <label for="accountSelect">Account:</label>
+                    <select class="form-control" id="accountSelect">
+                        <option value="account1">Account 1</option>
+                        <option value="account2">Account 2</option>
+                        <option value="account3">Account 3</option>
+                        <option value="account4">Account 4</option>
+                        <option value="account5">Account 5</option>
+                        <option value="account6">Account 6</option>
+                        <option value="account7">Account 7</option>
+                        <option value="account8">Account 8</option>
+                        <option value="account9">Account 9</option>
+                        <option value="account10">Account 10</option>
+                        <option value="account11">Account 11</option>
+                        <option value="account12">Account 12</option>
+                        <option value="account13">Account 13</option>
+                        <option value="account14">Account 14</option>
+                        <option value="account15">Account 15</option>
+                        <option value="account16">Account 16</option>
+                        <option value="account17">Account 17</option>
+                        <option value="account18">Account 18</option>
+                        <option value="account19">Account 19</option>
+                        <option value="account20">Account 20                        
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Filter by Type:</label><br>
+                    <label><input type="checkbox" class="type-filter" value="EC2"> EC2</label>
+                    <label><input type="checkbox" class="type-filter" value="EKS"> EKS</label>
+                    <label><input type="checkbox" class="type-filter" value="RDS"> RDS</label>
+                </div>
+                <table id="resourceTable" class="resource-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Name</th>
+                            <th>Region</th>
+                            <th>State</th>
+                            <th>Version</th>
+                            <th>Launch Time</th>
+                            <th>Account</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            var table;
+
+            $('#accountSelect').change(function() {
+                var selectedAccount = $(this).val();
+
+                if (selectedAccount) {
+                    if ($.fn.DataTable.isDataTable('#resourceTable')) {
+                        table.destroy();
+                    }
+
+                    table = $('#resourceTable').DataTable({
+                        ajax: {
+                            url: '/instances?account=' + selectedAccount,
+                            dataSrc: ''
+                        },
+                        columns: [
+                            { data: 'id' },
+                            { data: 'type' },
+                            { data: 'name' },
+                            { data: 'region' },
+                            { 
+                                data: 'state',
+                                render: function(data) {
+                                    var icon;
+                                    switch (data) {
+                                        case 'running':
+                                            icon = '<i class="fas fa-play text-success"></i> Running'; // Ícone de "Running" (verde)
+                                            break;
+                                        case 'stopped':
+                                            icon = '<i class="fas fa-stop text-danger"></i> Stopped'; // Ícone de "Stopped" (vermelho)
+                                            break;
+                                        default:
+                                            icon = data;
+                                    }
+                                    return icon;
+                                }
+                            },
+                            { data: 'version' },
+                            { data: 'launch_time' },
+                            { data: 'account' }
+                        ],
+                        searching: true,
+                        paging: true,
+                        ordering: true,
+                        info: true,
+                        autoWidth: true,
+                        responsive: true,
+                        initComplete: function () {
+                            var api = this.api();
+
+                            // Adiciona o filtro de tipo de recurso
+                            $('.type-filter').on('change', function () {
+                                var checkedValues = $('.type-filter:checked').map(function() {
+                                    return this.value;
+                                }).get();
+
+                                api.columns(1).search(checkedValues.join('|'), true, false).draw();
+                            });
+                        },
+                        drawCallback: function() {
+                            var api = this.api();
+                            var totalCount = api.rows({ filter: 'applied' }).count();
+                            var ec2Count = api.columns(1).data().eq(0).filter(function (value) { return value === 'EC2'; }).length;
+                            var eksCount = api.columns(1).data().eq(0).filter(function (value) { return value === 'EKS'; }).length;
+                            var rdsCount = api.columns(1).data().eq(0).filter(function (value) { return value === 'RDS'; }).length;
+                            $('#resourceCountBadge').text(totalCount); // Atualiza o número total de recursos listados
+                            $('#ec2CountBadge').text(ec2Count); // Atualiza o número de recursos EC2 listados
+                            $('#eksCountBadge').text(eksCount); // Atualiza o número de recursos EKS listados
+                            $('#rdsCountBadge').text(rdsCount); // Atualiza o número de recursos RDS listados
+                        }
+                    });
+
+                    // Export to CSV
+                    $('#exportCsvBtn').click(function() {
+                        exportToCsv(selectedAccount);
+                    });
+                }
+            });
+
+            function exportToCsv(selectedAccount) {
+                $.ajax({
+                    url: '/export_csv?account=' + selectedAccount,
+                    type: 'GET',
+                    success: function(response) {
+                        // Criar um link temporário e acionar o clique para baixar o arquivo CSV
+                        var blob = new Blob([response]);
+                        var link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = 'resource_data.csv';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
